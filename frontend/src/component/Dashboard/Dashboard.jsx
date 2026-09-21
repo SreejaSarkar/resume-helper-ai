@@ -437,13 +437,13 @@ const Dashboard = () => {
                   height: 52,
                 }}
                 onClick={() =>
-                  navigate("/interview-prep", {
+                  navigate("/star-stories", {
                     state: { resumeFile, jobDesc },
                   })
                 }
                 disabled={isActionDisabled}
               >
-                Interview Coach
+                STAR Story Builder
               </Button>
             </Box>
 

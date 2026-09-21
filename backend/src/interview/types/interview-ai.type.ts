@@ -1,31 +1,31 @@
-export interface InterviewReadinessResult {
+export interface StarStoryBuilderResult {
   candidateName: string;
-  readinessScore: number;
-  roleFitSummary: string;
+  roleSummary: string;
+  storyStrategy: string;
   strengthsToLead: string[];
-  focusAreas: InterviewFocusArea[];
-  generalQuestions: InterviewQuestion[];
-  experiences: InterviewExperienceBlock[];
+  practiceTips: string[];
+  stories: StarStory[];
 }
 
-export interface InterviewFocusArea {
-  area: string;
-  reason: string;
-  practicePrompt: string;
-}
+export type StoryUseCase =
+  | 'behavioral'
+  | 'technical'
+  | 'leadership'
+  | 'ownership'
+  | 'impact'
+  | 'conflict';
 
-export interface InterviewQuestion {
-  question: string;
-  whyAsked: string;
-  answerStrategy: string;
-  supportingEvidence: string[];
-}
-
-export interface InterviewExperienceBlock {
+export interface StarStory {
   title: string;
+  bestUse: StoryUseCase;
   relevance: string;
-  questions: InterviewQuestion[];
-  talkingPoints: string[];
-  evaluationFocus: string;
-  followUpRisk: string;
+  situation: string;
+  task: string;
+  action: string;
+  result: string;
+  recruiterVersion: string;
+  deepDiveVersion: string;
+  proofPoints: string[];
+  likelyFollowUps: string[];
+  weakSpots: string[];
 }

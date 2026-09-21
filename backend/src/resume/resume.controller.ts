@@ -59,6 +59,15 @@ export class ResumeController {
     @UploadedFile() file: Express.Multer.File,
     @Body('jobDescription') jobDescription: string,
   ) {
-    return this.service.generateInterviewReadiness(file, jobDescription);
+    return this.service.generateStarStories(file, jobDescription);
+  }
+
+  @Post('star-stories')
+  @UseInterceptors(FileInterceptor('resume'))
+  async starStories(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('jobDescription') jobDescription: string,
+  ) {
+    return this.service.generateStarStories(file, jobDescription);
   }
 }

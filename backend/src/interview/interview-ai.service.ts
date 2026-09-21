@@ -2,10 +2,9 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { cohere } from '../config/cohere.config';
 import {
-  InterviewFocusArea,
-  InterviewQuestion,
-  InterviewReadinessResult,
-  InterviewExperienceBlock,
+  StarStory,
+  StarStoryBuilderResult,
+  StoryUseCase,
 } from './types/interview-ai.type';
 import { buildResumeGrounding } from '../ai/resume-grounding.util';
 
@@ -14,79 +13,82 @@ export class InterviewAiService {
   async generate(
     resumeText: string,
     jobDescription: string,
-  ): Promise<InterviewReadinessResult> {
+  ): Promise<StarStoryBuilderResult> {
     const grounding = buildResumeGrounding(resumeText, jobDescription);
-    const fallback = this.buildFallbackReadiness(grounding);
+    const fallback = this.buildFallbackStories(grounding);
 
     if (!grounding.analysis.canUseAi) {
       return fallback;
     }
 
     const prompt = `
-You are a senior technical interviewer.
+You are a senior interview coach and storytelling strategist.
 
 Using ONLY the candidate's RESUME content:
 - Do NOT invent experience
 - Do NOT add new technologies
-- Base all questions strictly on what is written
+- Base all story building strictly on what is written
 - Use the deterministic plan below as the source of truth
 
 TASK:
-Build a practical interview prep kit from the candidate's real resume.
+Build a reusable STAR story bank from the candidate's real resume.
 
 Return:
-1. A short role-fit summary
-2. 2-4 strengths the candidate should lead with
-3. 2-4 focus areas where the candidate may get challenged
-4. 2-3 general opening questions the candidate should prepare for
-5. For each major experience or project: realistic questions, why each is asked, how to answer it, supporting evidence to mention, and likely follow-up risk
+1. A short role summary for how the candidate should position themselves
+2. A story strategy line telling them how to use the stories
+3. 2-4 strengths they should lead with
+4. 3-5 STAR stories based on real resume evidence
+
+Each STAR story must include:
+- title
+- bestUse: behavioral | technical | leadership | ownership | impact | conflict
+- relevance to the role
+- situation
+- task
+- action
+- result
+- a short recruiterVersion
+- a deeper deepDiveVersion
+- proofPoints
+- likelyFollowUps
+- weakSpots
 
 Return ONLY valid JSON.
 No markdown. No explanations.
 
 JSON format:
 {
-  "roleFitSummary": string,
+  "roleSummary": string,
+  "storyStrategy": string,
   "strengthsToLead": string[],
-  "focusAreas": [
-    {
-      "area": string,
-      "reason": string,
-      "practicePrompt": string
-    }
-  ],
-  "generalQuestions": [
-    {
-      "question": string,
-      "whyAsked": string,
-      "answerStrategy": string,
-      "supportingEvidence": string[]
-    }
-  ],
-  "experiences": [
+  "practiceTips": string[],
+  "stories": [
     {
       "title": string,
+      "bestUse": "behavioral" | "technical" | "leadership" | "ownership" | "impact" | "conflict",
       "relevance": string,
-      "questions": [
-        {
-          "question": string,
-          "whyAsked": string,
-          "answerStrategy": string,
-          "supportingEvidence": string[]
-        }
-      ],
-      "talkingPoints": string[],
-      "evaluationFocus": string,
-      "followUpRisk": string
+      "situation": string,
+      "task": string,
+      "action": string,
+      "result": string,
+      "recruiterVersion": string,
+      "deepDiveVersion": string,
+      "proofPoints": string[],
+      "likelyFollowUps": string[],
+      "weakSpots": string[]
     }
   ]
 }
 
-Deterministic interview plan:
+Deterministic story plan:
 ${JSON.stringify(
       {
+        candidateName: grounding.candidateName,
+        summary: grounding.analysis.summary,
         matchedSkills: grounding.analysis.matchedSkills,
         missingSkills: grounding.analysis.missingSkills,
+        strengths: grounding.analysis.strengths,
+        improvements: grounding.analysis.improvements,
         keywordCoverage: grounding.analysis.keywordCoverage,
         narrativeBlocks: grounding.narrativeBlocks,
         fallbackPlan: fallback,
@@ -121,14 +123,14 @@ ${jobDescription}
 
       return this.mergeWithFallback(parsed, fallback);
     } catch (error) {
-      console.error('Interview readiness AI fallback:', error);
+      console.error('STAR story builder AI fallback:', error);
       return fallback;
     }
   }
 
   /* ------------------ HELPERS ------------------ */
 
-  private safeParse(text: string): InterviewReadinessResult {
+  private safeParse(text: string): StarStoryBuilderResult {
     try {
       const cleaned = text
         .replace(/```json/gi, '')
@@ -145,7 +147,7 @@ ${jobDescription}
     }
   }
 
-  private isValid(data: unknown): data is InterviewReadinessResult {
+  private isValid(data: unknown): data is StarStoryBuilderResult {
     if (typeof data !== 'object' || data === null) {
       return false;
     }
@@ -154,265 +156,239 @@ ${jobDescription}
 
     return (
       typeof result.candidateName === 'string' &&
-      typeof result.readinessScore === 'number' &&
-      typeof result.roleFitSummary === 'string' &&
+      typeof result.roleSummary === 'string' &&
+      typeof result.storyStrategy === 'string' &&
       Array.isArray(result.strengthsToLead) &&
       result.strengthsToLead.every((entry) => typeof entry === 'string') &&
-      Array.isArray(result.focusAreas) &&
-      result.focusAreas.every((entry) => this.isValidFocusArea(entry)) &&
-      Array.isArray(result.generalQuestions) &&
-      result.generalQuestions.every((entry) => this.isValidQuestion(entry)) &&
-      Array.isArray(result.experiences) &&
-      result.experiences.every((entry) => {
-        if (typeof entry !== 'object' || entry === null) {
-          return false;
-        }
-
-        const experience = entry as InterviewExperienceBlock;
-
-        return (
-          typeof experience.title === 'string' &&
-          typeof experience.relevance === 'string' &&
-          Array.isArray(experience.questions) &&
-          experience.questions.every((q) => this.isValidQuestion(q)) &&
-          Array.isArray(experience.talkingPoints) &&
-          experience.talkingPoints.every((t) => typeof t === 'string') &&
-          typeof experience.evaluationFocus === 'string' &&
-          typeof experience.followUpRisk === 'string'
-        );
-      })
+      Array.isArray(result.practiceTips) &&
+      result.practiceTips.every((entry) => typeof entry === 'string') &&
+      Array.isArray(result.stories) &&
+      result.stories.every((entry) => this.isValidStory(entry))
     );
   }
 
-  private buildFallbackReadiness(
+  private buildFallbackStories(
     grounding: ReturnType<typeof buildResumeGrounding>,
-  ): InterviewReadinessResult {
-    const experiences = grounding.narrativeBlocks.slice(0, 5).map((block) => {
-      const focusSkill =
-        grounding.analysis.matchedSkills.find((skill) =>
-          block.bullets.some((bullet) => bullet.toLowerCase().includes(skill.toLowerCase())),
-        ) ?? grounding.analysis.matchedSkills[0];
-      const bullets = block.bullets.slice(0, 3);
+  ): StarStoryBuilderResult {
+    const stories = grounding.narrativeBlocks
+      .slice(0, 5)
+      .map((block, index) => this.buildStory(block.title, block.bullets.slice(0, 3), grounding, index));
 
-      return {
-        title: block.title,
-        relevance: focusSkill
-          ? `${block.title} gives you the best evidence for ${focusSkill}.`
-          : `${block.title} is useful to show ownership and technical judgment.`,
-        questions: this.buildQuestions(block.title, focusSkill, bullets),
-        talkingPoints:
-          bullets.length > 0
-            ? bullets
-            : [
-                `Explain the scope of ${block.title}.`,
-                'Describe the actions you took and the result you achieved.',
-              ],
-        evaluationFocus: focusSkill
-          ? `${focusSkill}, ownership, and measurable impact`
-          : 'ownership, technical judgment, and measurable impact',
-        followUpRisk: focusSkill
-          ? `Be ready to prove depth in ${focusSkill} with concrete decisions, tradeoffs, and outcomes.`
-          : 'Be ready for follow-up questions on technical decisions, tradeoffs, and measurable results.',
-      };
-    });
-
-    if (experiences.length > 0) {
+    if (stories.length > 0) {
       return {
         candidateName: grounding.candidateName,
-        readinessScore: grounding.analysis.score,
-        roleFitSummary: this.buildRoleFitSummary(grounding),
+        roleSummary: this.buildRoleSummary(grounding),
+        storyStrategy: this.buildStoryStrategy(grounding),
         strengthsToLead: grounding.analysis.strengths.slice(0, 4),
-        focusAreas: this.buildFocusAreas(grounding),
-        generalQuestions: this.buildGeneralQuestions(grounding),
-        experiences,
+        practiceTips: this.buildPracticeTips(grounding),
+        stories,
       };
     }
 
     return {
       candidateName: grounding.candidateName,
-      readinessScore: grounding.analysis.score,
-      roleFitSummary: this.buildRoleFitSummary(grounding),
+      roleSummary: this.buildRoleSummary(grounding),
+      storyStrategy: this.buildStoryStrategy(grounding),
       strengthsToLead: grounding.analysis.strengths.slice(0, 4),
-      focusAreas: this.buildFocusAreas(grounding),
-      generalQuestions: this.buildGeneralQuestions(grounding),
-      experiences: [
-        {
-          title: 'Resume Overview',
-          relevance: 'Use this to connect your background to the target role in a clear first impression.',
-          questions: [
-            {
-              question:
-                'Walk me through your resume and the most relevant experience for this role.',
-              whyAsked: 'The interviewer wants a concise story that shows relevance and prioritization.',
-              answerStrategy:
-                'Start with your current level, then cover 2-3 role-relevant experiences, and end with why this role is the logical next step.',
-              supportingEvidence: grounding.analysis.strengths.slice(0, 3),
-            },
-            {
-              question:
-                'Which part of your background best matches this job description?',
-              whyAsked: 'The interviewer is testing whether you understand the role and can position yourself clearly.',
-              answerStrategy:
-                'Pick one strong overlap area, describe what you owned, and connect it to the job requirements using outcomes.',
-              supportingEvidence: grounding.analysis.matchedSkills.slice(0, 3),
-            },
-          ],
-          talkingPoints: grounding.analysis.improvements.slice(0, 3),
-          evaluationFocus: 'communication, prioritization, and role alignment',
-          followUpRisk:
-            'If your story is too broad, expect follow-ups asking for specifics, metrics, and direct relevance to the role.',
-        },
+      practiceTips: this.buildPracticeTips(grounding),
+      stories: [
+        this.buildStory(
+          'Core Resume Story',
+          grounding.analysis.strengths.slice(0, 3),
+          grounding,
+          0,
+        ),
       ],
     };
   }
 
-  private buildQuestions(
+  private buildStory(
     title: string,
-    focusSkill: string | undefined,
     bullets: string[],
-  ): InterviewQuestion[] {
+    grounding: ReturnType<typeof buildResumeGrounding>,
+    index: number,
+  ): StarStory {
     const evidence = bullets.length > 0 ? bullets : [`Explain the scope and outcomes of ${title}.`];
+    const matchedSkill =
+      grounding.analysis.matchedSkills.find((skill) =>
+        evidence.some((bullet) => bullet.toLowerCase().includes(skill.toLowerCase())),
+      ) ?? grounding.analysis.matchedSkills[index] ?? grounding.analysis.matchedSkills[0];
+    const topGap = grounding.analysis.missingSkills[0];
+    const bestUse = this.pickBestUse(title, evidence, matchedSkill, index);
 
-    return [
-      {
-        question: `Walk me through ${title} and the problem you were solving.`,
-        whyAsked: 'The interviewer wants to hear your ownership, scope, and ability to explain context clearly.',
-        answerStrategy:
-          'Use a short STAR structure: set the context, explain your responsibility, describe your actions, and end with the result.',
-        supportingEvidence: evidence.slice(0, 2),
-      },
-      {
-        question: focusSkill
-          ? `How did you apply ${focusSkill} during ${title}?`
-          : `What technical decisions did you make during ${title}?`,
-        whyAsked: focusSkill
-          ? `The interviewer is checking whether your resume claims around ${focusSkill} are real and role-relevant.`
-          : 'The interviewer is checking your technical judgment and decision-making.',
-        answerStrategy: focusSkill
-          ? `Explain where ${focusSkill} fit into the workflow, why you used it, what tradeoffs you handled, and what outcome it influenced.`
-          : 'Describe the options you considered, the tradeoffs you weighed, and why your final approach made sense.',
-        supportingEvidence: evidence.slice(0, 2),
-      },
-      {
-        question: `What would you improve if you were doing ${title} again?`,
-        whyAsked: 'The interviewer wants to see reflection, maturity, and your ability to improve systems over time.',
-        answerStrategy:
-          'Be honest about one limitation, then explain the concrete improvement you would make and why it matters.',
-        supportingEvidence: evidence.slice(0, 1),
-      },
-    ];
+    return {
+      title,
+      bestUse,
+      relevance: matchedSkill
+        ? `${title} is one of your strongest proof points for ${matchedSkill}.`
+        : `${title} helps you show ownership, context, and execution.`,
+      situation: `Set up the business or technical context for ${title} in one or two lines.`,
+      task: matchedSkill
+        ? `Explain the responsibility you personally owned, especially around ${matchedSkill}.`
+        : 'Explain the responsibility, goal, or constraint you personally owned.',
+      action: evidence.join(' '),
+      result: matchedSkill
+        ? `Close with the outcome, impact, and why your work on ${matchedSkill} mattered.`
+        : 'Close with the outcome, impact, and what changed because of your work.',
+      recruiterVersion: this.buildRecruiterVersion(title, evidence, matchedSkill),
+      deepDiveVersion: this.buildDeepDiveVersion(title, evidence, matchedSkill),
+      proofPoints: evidence,
+      likelyFollowUps: this.buildFollowUps(title, matchedSkill, bestUse),
+      weakSpots: [
+        topGap
+          ? `Be ready to explain how this story still supports the role even if ${topGap} is not deeply shown here.`
+          : 'Be ready with metrics, scale, and tradeoffs if the result sounds too general.',
+        'If you do not mention scope, ownership, or outcome clearly, the story will sound weaker than it is.',
+      ],
+    };
   }
 
-  private isValidQuestion(data: unknown): data is InterviewQuestion {
+  private isValidStory(data: unknown): data is StarStory {
     if (typeof data !== 'object' || data === null) {
       return false;
     }
 
-    const question = data as InterviewQuestion;
+    const story = data as StarStory;
 
     return (
-      typeof question.question === 'string' &&
-      typeof question.whyAsked === 'string' &&
-      typeof question.answerStrategy === 'string' &&
-      Array.isArray(question.supportingEvidence) &&
-      question.supportingEvidence.every((entry) => typeof entry === 'string')
+      typeof story.title === 'string' &&
+      typeof story.bestUse === 'string' &&
+      typeof story.relevance === 'string' &&
+      typeof story.situation === 'string' &&
+      typeof story.task === 'string' &&
+      typeof story.action === 'string' &&
+      typeof story.result === 'string' &&
+      typeof story.recruiterVersion === 'string' &&
+      typeof story.deepDiveVersion === 'string' &&
+      Array.isArray(story.proofPoints) &&
+      story.proofPoints.every((entry) => typeof entry === 'string') &&
+      Array.isArray(story.likelyFollowUps) &&
+      story.likelyFollowUps.every((entry) => typeof entry === 'string') &&
+      Array.isArray(story.weakSpots) &&
+      story.weakSpots.every((entry) => typeof entry === 'string')
     );
   }
 
-  private isValidFocusArea(data: unknown): data is InterviewFocusArea {
-    if (typeof data !== 'object' || data === null) {
-      return false;
-    }
-
-    const focusArea = data as InterviewFocusArea;
-
-    return (
-      typeof focusArea.area === 'string' &&
-      typeof focusArea.reason === 'string' &&
-      typeof focusArea.practicePrompt === 'string'
-    );
-  }
-
-  private buildRoleFitSummary(
+  private buildRoleSummary(
     grounding: ReturnType<typeof buildResumeGrounding>,
   ) {
     const keywordCoverage = grounding.analysis.keywordCoverage;
-    const topGap = grounding.analysis.missingSkills[0];
 
     return [
       grounding.analysis.summary,
       keywordCoverage.total > 0
-        ? `You currently match ${keywordCoverage.matched} of ${keywordCoverage.total} tracked job keywords.`
+        ? `Frame yourself around the ${keywordCoverage.matched} tracked keywords you already cover well.`
         : '',
-      topGap ? `Expect deeper probing around ${topGap}.` : '',
     ]
       .filter(Boolean)
       .join(' ');
   }
 
-  private buildFocusAreas(
+  private buildStoryStrategy(
     grounding: ReturnType<typeof buildResumeGrounding>,
-  ): InterviewFocusArea[] {
-    const missing = grounding.analysis.missingSkills.slice(0, 3).map((skill) => ({
-      area: skill,
-      reason: `This skill appears important in the job description but has limited direct evidence in your resume.`,
-      practicePrompt: `Prepare a truthful answer that connects adjacent experience, learning effort, and how you would ramp up on ${skill}.`,
-    }));
+  ) {
+    const topGap = grounding.analysis.missingSkills[0];
 
-    const sectionGaps = grounding.analysis.sectionAnalysis
-      .filter((section) => !section.present)
-      .slice(0, 1)
-      .map((section) => ({
-        area: `${section.section} clarity`,
-        reason: section.feedback,
-        practicePrompt: `Be ready to explain this area verbally since the resume does not make it obvious yet.`,
-      }));
-
-    return [...missing, ...sectionGaps].slice(0, 4);
+    return [
+      'Lead with the stories that show the clearest ownership and measurable outcomes.',
+      topGap
+        ? `Use your strongest stories to offset likely concern around ${topGap} without overstating experience.`
+        : '',
+      'Keep a short recruiter version ready first, then expand into a deeper technical version only when asked.',
+    ]
+      .filter(Boolean)
+      .join(' ');
   }
 
-  private buildGeneralQuestions(
+  private buildPracticeTips(
     grounding: ReturnType<typeof buildResumeGrounding>,
-  ): InterviewQuestion[] {
+  ): string[] {
     return [
-      {
-        question: 'Tell me about yourself and why this role makes sense for you now.',
-        whyAsked: 'This sets the tone for the interview and tests whether you can frame your background around the role.',
-        answerStrategy:
-          'Keep it to 60-90 seconds: who you are, the most relevant experience, the value you bring, and why this role is the next fit.',
-        supportingEvidence: grounding.analysis.strengths.slice(0, 3),
-      },
-      {
-        question: 'Which project or experience best shows your fit for this job?',
-        whyAsked: 'The interviewer wants you to prioritize the strongest role-relevant evidence instead of listing everything.',
-        answerStrategy:
-          'Choose one experience, explain the problem, your contribution, and the outcome, then tie it directly to the job description.',
-        supportingEvidence: grounding.narrativeBlocks[0]?.bullets.slice(0, 2) ?? grounding.analysis.matchedSkills.slice(0, 2),
-      },
-      {
-        question: 'What is one area from this role where you would need to ramp up quickly?',
-        whyAsked: 'Interviewers often test self-awareness and coachability, especially when some required skills are not deeply proven.',
-        answerStrategy:
-          'Pick one real gap, show related experience, describe how you learn, and give a concrete ramp-up plan.',
-        supportingEvidence: grounding.analysis.missingSkills.slice(0, 2),
-      },
+      'Say each story out loud once in under 45 seconds and once in under 2 minutes.',
+      'Make sure every story states the problem, your ownership, the action you took, and the result.',
+      grounding.analysis.missingSkills[0]
+        ? `Prepare one honest bridge sentence for ${grounding.analysis.missingSkills[0]} so you can handle gap-related follow-up questions.`
+        : 'Prepare one line explaining why your background is a direct fit for this role.',
+    ];
+  }
+
+  private pickBestUse(
+    title: string,
+    bullets: string[],
+    matchedSkill: string | undefined,
+    index: number,
+  ): StoryUseCase {
+    const normalized = `${title} ${bullets.join(' ')}`.toLowerCase();
+
+    if (/lead|mentor|manage|owner/.test(normalized)) {
+      return 'leadership';
+    }
+
+    if (/conflict|issue|incident|blocker|stakeholder/.test(normalized)) {
+      return 'conflict';
+    }
+
+    if (/impact|improve|increase|reduce|save|optimi/.test(normalized)) {
+      return 'impact';
+    }
+
+    if (matchedSkill && index === 0) {
+      return 'technical';
+    }
+
+    return index % 2 === 0 ? 'ownership' : 'behavioral';
+  }
+
+  private buildRecruiterVersion(
+    title: string,
+    bullets: string[],
+    matchedSkill?: string,
+  ) {
+    const firstPoint = bullets[0] ?? `Delivered meaningful work in ${title}.`;
+    return matchedSkill
+      ? `I used ${title} to show practical ownership around ${matchedSkill}. ${firstPoint}`
+      : `I use ${title} to show ownership, execution, and outcome. ${firstPoint}`;
+  }
+
+  private buildDeepDiveVersion(
+    title: string,
+    bullets: string[],
+    matchedSkill?: string,
+  ) {
+    const evidence = bullets.join(' ');
+    return matchedSkill
+      ? `In ${title}, I can go deeper on how I approached ${matchedSkill}, the tradeoffs I handled, and the result that followed. ${evidence}`
+      : `In ${title}, I can go deeper on the context, the decisions I made, and the result that followed. ${evidence}`;
+  }
+
+  private buildFollowUps(
+    title: string,
+    matchedSkill: string | undefined,
+    bestUse: StoryUseCase,
+  ) {
+    return [
+      `What was the hardest part of ${title}?`,
+      matchedSkill
+        ? `How confident are you with ${matchedSkill} beyond ${title}?`
+        : `What tradeoffs did you make during ${title}?`,
+      bestUse === 'leadership'
+        ? 'How did you influence others or handle disagreement?'
+        : 'How would you improve this work if you repeated it today?',
     ];
   }
 
   private mergeWithFallback(
-    result: InterviewReadinessResult,
-    fallback: InterviewReadinessResult,
-  ): InterviewReadinessResult {
+    result: StarStoryBuilderResult,
+    fallback: StarStoryBuilderResult,
+  ): StarStoryBuilderResult {
     return {
       candidateName: fallback.candidateName,
-      readinessScore: fallback.readinessScore,
-      roleFitSummary: result.roleFitSummary || fallback.roleFitSummary,
+      roleSummary: result.roleSummary || fallback.roleSummary,
+      storyStrategy: result.storyStrategy || fallback.storyStrategy,
       strengthsToLead:
         result.strengthsToLead.length > 0 ? result.strengthsToLead : fallback.strengthsToLead,
-      focusAreas: result.focusAreas.length > 0 ? result.focusAreas : fallback.focusAreas,
-      generalQuestions:
-        result.generalQuestions.length > 0 ? result.generalQuestions : fallback.generalQuestions,
-      experiences: result.experiences.length > 0 ? result.experiences : fallback.experiences,
+      practiceTips: result.practiceTips.length > 0 ? result.practiceTips : fallback.practiceTips,
+      stories: result.stories.length > 0 ? result.stories : fallback.stories,
     };
   }
 }

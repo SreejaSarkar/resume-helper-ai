@@ -8,14 +8,14 @@ import {
   Skeleton,
   Button,
   Chip,
-  LinearProgress,
   Stack,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import RecordVoiceOverOutlinedIcon from "@mui/icons-material/RecordVoiceOverOutlined";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import CheckCircleOutlineOutlinedIcon from "@mui/icons-material/CheckCircleOutlineOutlined";
+import TipsAndUpdatesOutlinedIcon from "@mui/icons-material/TipsAndUpdatesOutlined";
+import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
+import FlareOutlinedIcon from "@mui/icons-material/FlareOutlined";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { buildApiUrl, getAuthHeaders } from "../../utils/api";
@@ -43,14 +43,14 @@ const InterviewPrep = () => {
           "Content-Type": "multipart/form-data",
         });
         const res = await axios.post(
-          buildApiUrl("/resume/interview-readiness"),
+          buildApiUrl("/resume/star-stories"),
           formData,
           { headers }
         );
 
-        setData(res.data.interviewReadiness);
+        setData(res.data.starStories);
       } catch {
-        setError("Failed to generate interview preparation");
+        setError("Failed to generate STAR stories");
       } finally {
         setLoading(false);
       }
@@ -72,10 +72,10 @@ const InterviewPrep = () => {
         </Button>
 
         <Typography fontSize={{ xs: 28, md: 40 }} fontWeight={700}>
-          Interview Coach
+          STAR Story Builder
         </Typography>
         <Typography color="text.secondary">
-          Practice better answers using your actual resume evidence and likely recruiter pressure points.
+          Turn your resume into reusable STAR stories you can use in recruiter screens, interviews, and networking conversations.
         </Typography>
       </Box>
 
@@ -106,29 +106,21 @@ const InterviewPrep = () => {
                   Candidate
                 </Typography>
                 <Typography fontSize={{ xs: 24, md: 30 }} fontWeight={700}>
-                  {data.candidateName || "Interview Plan"}
+                  {data.candidateName || "Story Builder"}
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 1, maxWidth: 760 }}>
-                  {data.roleFitSummary}
+                  {data.roleSummary}
                 </Typography>
               </Box>
 
               <Card sx={scoreCard}>
                 <Typography fontSize={13} color="text.secondary">
-                  Readiness Score
+                  Story Strategy
                 </Typography>
-                <Typography fontSize={34} fontWeight={700}>
-                  {data.readinessScore}%
+                <Typography fontSize={16} fontWeight={700} sx={{ maxWidth: 240 }}>
+                  {data.storyStrategy}
                 </Typography>
               </Card>
-            </Box>
-
-            <Box sx={{ mt: 3 }}>
-              <LinearProgress
-                variant="determinate"
-                value={data.readinessScore || 0}
-                sx={{ height: 10, borderRadius: 999 }}
-              />
             </Box>
 
             {data.strengthsToLead?.length > 0 && (
@@ -155,22 +147,16 @@ const InterviewPrep = () => {
             <Stack spacing={3}>
               <Card sx={panelCard}>
                 <Box sx={panelHeader}>
-                  <WarningAmberOutlinedIcon sx={{ color: "#b45309" }} />
+                  <TipsAndUpdatesOutlinedIcon sx={{ color: "#b45309" }} />
                   <Typography fontSize={22} fontWeight={700}>
-                    Focus Areas
+                    Practice Tips
                   </Typography>
                 </Box>
 
                 <Stack spacing={2} sx={{ mt: 2 }}>
-                  {data.focusAreas?.map((area) => (
-                    <Box key={area.area} sx={detailBlock}>
-                      <Typography fontWeight={700}>{area.area}</Typography>
-                      <Typography fontSize={14} color="text.secondary" sx={{ mt: 1 }}>
-                        {area.reason}
-                      </Typography>
-                      <Typography fontSize={14} sx={{ mt: 1.25 }}>
-                        <b>Practice:</b> {area.practicePrompt}
-                      </Typography>
+                  {data.practiceTips?.map((tip, index) => (
+                    <Box key={index} sx={detailBlock}>
+                      <Typography fontSize={14}>{tip}</Typography>
                     </Box>
                   ))}
                 </Stack>
@@ -178,100 +164,105 @@ const InterviewPrep = () => {
 
               <Card sx={panelCard}>
                 <Box sx={panelHeader}>
-                  <RecordVoiceOverOutlinedIcon sx={{ color: "#2563eb" }} />
+                  <WorkOutlineOutlinedIcon sx={{ color: "#2563eb" }} />
                   <Typography fontSize={22} fontWeight={700}>
-                    General Questions
+                    Best Uses
                   </Typography>
                 </Box>
 
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                  {data.generalQuestions?.map((item, index) => (
-                    <Box key={`${item.question}-${index}`} sx={detailBlock}>
-                      <Typography fontWeight={700}>{item.question}</Typography>
-                      <Typography fontSize={14} color="text.secondary" sx={{ mt: 1 }}>
-                        {item.whyAsked}
-                      </Typography>
-                      <Typography fontSize={14} sx={{ mt: 1.25 }}>
-                        <b>How to answer:</b> {item.answerStrategy}
-                      </Typography>
-                      {item.supportingEvidence?.length > 0 && (
-                        <Box sx={{ mt: 1.25 }}>
-                          {item.supportingEvidence.map((evidence, evidenceIndex) => (
-                            <Typography key={evidenceIndex} fontSize={14}>
-                              • {evidence}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 2 }}>
+                  {Array.from(new Set((data.stories || []).map((story) => story.bestUse))).map((useCase) => (
+                    <Chip key={useCase} label={useCase} variant="outlined" />
                   ))}
-                </Stack>
+                </Box>
               </Card>
             </Stack>
 
             <Stack spacing={3}>
-              {data.experiences?.map((exp, idx) => (
+              {data.stories?.map((story, idx) => (
                 <Card key={idx} sx={panelCard}>
                   <Box sx={panelHeader}>
-                    <AutoAwesomeIcon sx={{ color: "#7c3aed" }} />
+                    <FlareOutlinedIcon sx={{ color: "#7c3aed" }} />
                     <Typography fontSize={22} fontWeight={700}>
-                      {exp.title}
+                      {story.title}
                     </Typography>
                   </Box>
 
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 1.5 }}>
+                    <Chip icon={<AutoAwesomeIcon />} label={story.bestUse} color="secondary" variant="outlined" />
+                  </Box>
+
                   <Typography fontSize={14} color="text.secondary" sx={{ mt: 1.5 }}>
-                    {exp.relevance}
+                    {story.relevance}
                   </Typography>
 
                   <Divider sx={{ my: 2 }} />
 
-                  <Typography fontWeight={700} mb={1}>
-                    Likely Questions
-                  </Typography>
-                  <Stack spacing={2}>
-                    {exp.questions?.map((question, questionIndex) => (
-                      <Box key={`${question.question}-${questionIndex}`} sx={detailBlock}>
-                        <Typography fontWeight={700}>{question.question}</Typography>
-                        <Typography fontSize={14} color="text.secondary" sx={{ mt: 1 }}>
-                          {question.whyAsked}
-                        </Typography>
-                        <Typography fontSize={14} sx={{ mt: 1.25 }}>
-                          <b>How to answer:</b> {question.answerStrategy}
-                        </Typography>
-                        {question.supportingEvidence?.length > 0 && (
-                          <Box sx={{ mt: 1.25 }}>
-                            <Typography fontSize={13} fontWeight={700} sx={{ mb: 0.5 }}>
-                              Supporting evidence
-                            </Typography>
-                            {question.supportingEvidence.map((item, evidenceIndex) => (
-                              <Typography key={evidenceIndex} fontSize={14}>
-                                • {item}
-                              </Typography>
-                            ))}
-                          </Box>
-                        )}
-                      </Box>
-                    ))}
-                  </Stack>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700}>Situation</Typography>
+                      <Typography fontSize={14} sx={{ mt: 1 }}>{story.situation}</Typography>
+                    </Box>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700}>Task</Typography>
+                      <Typography fontSize={14} sx={{ mt: 1 }}>{story.task}</Typography>
+                    </Box>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700}>Action</Typography>
+                      <Typography fontSize={14} sx={{ mt: 1 }}>{story.action}</Typography>
+                    </Box>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700}>Result</Typography>
+                      <Typography fontSize={14} sx={{ mt: 1 }}>{story.result}</Typography>
+                    </Box>
+                  </Box>
 
                   <Divider sx={{ my: 2 }} />
 
                   <Typography fontWeight={700} mb={1}>
-                    Key Talking Points
+                    Recruiter Version
                   </Typography>
-                  {exp.talkingPoints?.map((p, i) => (
-                    <Typography key={i} fontSize={14} sx={{ mb: 0.75 }}>
-                      • {p}
-                    </Typography>
-                  ))}
+                  <Box sx={detailBlock}>
+                    <Typography fontSize={14}>{story.recruiterVersion}</Typography>
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Typography fontWeight={700} mb={1}>
+                    Deep-Dive Version
+                  </Typography>
+                  <Box sx={detailBlock}>
+                    <Typography fontSize={14}>{story.deepDiveVersion}</Typography>
+                  </Box>
+
+                  <Divider sx={{ my: 2 }} />
+
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700} mb={1}>Proof Points</Typography>
+                      {story.proofPoints?.map((item, i) => (
+                        <Typography key={i} fontSize={14} sx={{ mb: 0.75 }}>
+                          • {item}
+                        </Typography>
+                      ))}
+                    </Box>
+                    <Box sx={detailBlock}>
+                      <Typography fontWeight={700} mb={1}>Likely Follow-Ups</Typography>
+                      {story.likelyFollowUps?.map((item, i) => (
+                        <Typography key={i} fontSize={14} sx={{ mb: 0.75 }}>
+                          • {item}
+                        </Typography>
+                      ))}
+                    </Box>
+                  </Box>
 
                   <Box sx={{ mt: 2, p: 2, borderRadius: 3, bgcolor: "#fff7ed" }}>
-                    <Typography fontSize={14}>
-                      <b>Interviewer is evaluating:</b> {exp.evaluationFocus}
-                    </Typography>
-                    <Typography fontSize={14} sx={{ mt: 1 }}>
-                      <b>Likely follow-up risk:</b> {exp.followUpRisk}
-                    </Typography>
+                    <Typography fontWeight={700} mb={1}>Weak Spots To Fix</Typography>
+                    {story.weakSpots?.map((item, i) => (
+                      <Typography key={i} fontSize={14} sx={{ mb: 0.75 }}>
+                        • {item}
+                      </Typography>
+                    ))}
                   </Box>
                 </Card>
               ))}
@@ -281,8 +272,8 @@ const InterviewPrep = () => {
       )}
 
       {/* Empty */}
-      {!loading && data?.experiences?.length === 0 && (
-        <Typography>No interview preparation data available.</Typography>
+      {!loading && data?.stories?.length === 0 && (
+        <Typography>No STAR stories available.</Typography>
       )}
     </Box>
   );
@@ -295,7 +286,7 @@ const heroCard = {
 };
 
 const scoreCard = {
-  minWidth: 170,
+  minWidth: 250,
   p: 2.5,
   borderRadius: 3,
   boxShadow: "none",

@@ -219,7 +219,7 @@ export class ResumeService {
     };
   }
 
-  async generateInterviewReadiness(
+  async generateStarStories(
     file: UploadedResumeFile,
     jobDescription: string,
   ) {
@@ -229,13 +229,13 @@ export class ResumeService {
 
     const resumeText = await parsePDF(file.buffer);
 
-    const interviewReadiness = await this.interviewAiService.generate(
+    const starStories = await this.interviewAiService.generate(
       resumeText,
       jobDescription,
     );
 
     return {
-      interviewReadiness,
+      starStories,
     };
   }
 }

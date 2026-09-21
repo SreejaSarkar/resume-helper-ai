@@ -126,6 +126,15 @@ function App() {
                 </ProtectedRoute>
               }
             />
+
+            <Route
+              path="/star-stories"
+              element={
+                <ProtectedRoute>
+                  <InterviewPrep />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </Box>
 
