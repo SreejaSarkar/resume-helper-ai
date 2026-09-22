@@ -154,7 +154,8 @@ export class PdfService {
     });
 
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: 'networkidle0' });
+    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+    await page.waitForNetworkIdle();
 
     const height = await page.evaluate(() => document.body.scrollHeight);
 
