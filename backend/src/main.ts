@@ -9,6 +9,7 @@ import { observatory } from './observability/observatory';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const port = Number(process.env.PORT) || 5000;
 
   app.use('/files', express.static(path.join(process.cwd(), 'uploads')));
   app.useGlobalInterceptors(observatory.nest());
@@ -27,7 +28,7 @@ async function bootstrap() {
     void shutdown();
   });
 
-  await app.listen(5000);
+  await app.listen(port);
 }
 
 bootstrap();
