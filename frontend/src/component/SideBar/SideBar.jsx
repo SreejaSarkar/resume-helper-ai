@@ -41,7 +41,7 @@ const SideBar = ({ open, setOpen }) => {
 
   const toolItems = [
     { label: "History", icon: <ManageSearchIcon />, path: "/history" },
-    ...(["admin", "super_admin"].includes(user?.role)
+    ...(user?.role === "admin"
       ? [{ label: "Admin", icon: <AdminPanelSettingsIcon />, path: "/admin" }]
       : []),
   ];

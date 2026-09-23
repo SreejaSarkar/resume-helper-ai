@@ -6,6 +6,7 @@ import CssBaseline from "@mui/material/CssBaseline";
 
 import App from "./App.jsx";
 import AuthProvider from "./utils/AuthProvider.jsx";
+import { ResumeDraftProvider } from "./utils/ResumeDraftContext.jsx";
 import theme from "./theme"; // 👈 make sure this file exists
 
 createRoot(document.getElementById("root")).render(
@@ -14,7 +15,9 @@ createRoot(document.getElementById("root")).render(
       <CssBaseline />
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <ResumeDraftProvider>
+            <App />
+          </ResumeDraftProvider>
         </AuthProvider>
       </BrowserRouter>
     </ThemeProvider>

@@ -1,4 +1,12 @@
-import { Controller, Get, Req, Patch, Param, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Req,
+  Patch,
+  Param,
+  UseGuards,
+  Query,
+} from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -7,14 +15,39 @@ import { UserRole } from '../user/user.entity';
 import { AuthRequest } from '../auth/auth.types';
 
 @UseGuards(FirebaseAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+@Roles(UserRole.ADMIN)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get('users')
-  getUsers() {
-    return this.adminService.getUsersWithFeedbackCount();
+  getUsers(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+  ) {
+    return this.adminService.getUsersWithFeedbackCount({
+      search,
+      role,
+      status,
+      sort,
+    });
+  }
+
+  @Get('dashboard')
+  getDashboard(
+    @Query('search') search?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: string,
+    @Query('sort') sort?: string,
+  ) {
+    return this.adminService.getDashboard({
+      search,
+      role,
+      status,
+      sort,
+    });
   }
 
   @Patch('users/:id/suspend')

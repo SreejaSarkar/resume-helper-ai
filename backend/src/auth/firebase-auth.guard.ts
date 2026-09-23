@@ -8,6 +8,7 @@ import {
 import { firebaseAdmin } from './firebase';
 import { UserService } from '../user/user.service';
 import { AuthRequest } from './auth.types';
+import { normalizeUserRole } from '../user/user.entity';
 
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
@@ -52,7 +53,7 @@ export class FirebaseAuthGuard implements CanActivate {
         email,
         name,
         phoneNumber,
-        role: dbUser.role,
+        role: normalizeUserRole(dbUser.role),
       };
 
       return true;

@@ -15,6 +15,18 @@ export enum UserRole {
   SUPER_ADMIN = 'super_admin',
 }
 
+export function normalizeUserRole(role?: UserRole | string | null): UserRole {
+  if (role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN) {
+    return UserRole.ADMIN;
+  }
+
+  return UserRole.USER;
+}
+
+export function isAdminRole(role?: UserRole | string | null): boolean {
+  return normalizeUserRole(role) === UserRole.ADMIN;
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')

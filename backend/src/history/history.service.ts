@@ -54,6 +54,8 @@ export class HistoryService {
     today.setHours(0, 0, 0, 0);
 
     const now = new Date();
+    const sevenDaysAgo = new Date(now);
+    sevenDaysAgo.setDate(now.getDate() - 7);
 
     const qb = this.repo.createQueryBuilder('h');
 
@@ -63,7 +65,15 @@ export class HistoryService {
       .where('h.createdAt BETWEEN :today AND :now', { today, now })
       .getRawOne<{ count: string }>();
 
-    const [aiCallsToday, atsScansToday, uploadsToday] = await Promise.all([
+    const [
+      aiCallsToday,
+      atsScansToday,
+      uploadsToday,
+      analysesLast7Days,
+      uploadsLast7Days,
+      uniqueUsersLast7DaysResult,
+      totalAnalyses,
+    ] = await Promise.all([
       qb
         .clone()
         .where('h.aiScore IS NOT NULL')
@@ -84,9 +94,31 @@ export class HistoryService {
 
       qb
         .clone()
+        .where('h.createdAt BETWEEN :sevenDaysAgo AND :now', {
+          sevenDaysAgo,
+          now,
+        })
+        .getCount(),
+
+      qb
+        .clone()
+        .where('h.resumeUrl IS NOT NULL')
+        .andWhere('h.createdAt BETWEEN :sevenDaysAgo AND :now', {
+          sevenDaysAgo,
+          now,
+        })
+        .getCount(),
+
+      qb
+        .clone()
         .select('COUNT(DISTINCT h.userId)', 'count')
-        .where('h.createdAt BETWEEN :today AND :now', { today, now })
+        .where('h.createdAt BETWEEN :sevenDaysAgo AND :now', {
+          sevenDaysAgo,
+          now,
+        })
         .getRawOne(),
+
+      qb.clone().getCount(),
     ]);
 
     return {
@@ -94,6 +126,10 @@ export class HistoryService {
       aiCallsToday,
       atsCallsToday: atsScansToday,
       uploadsToday,
+      analysesLast7Days,
+      uploadsLast7Days,
+      activeUsersLast7Days: Number(uniqueUsersLast7DaysResult?.count ?? 0),
+      totalAnalyses,
     };
   }
 }

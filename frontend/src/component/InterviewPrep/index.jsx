@@ -19,17 +19,21 @@ import FlareOutlinedIcon from "@mui/icons-material/FlareOutlined";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import { buildApiUrl, getAuthHeaders } from "../../utils/api";
+import { useResumeDraft } from "../../utils/ResumeDraftContext";
 
 const InterviewPrep = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const { resumeFile, jobDesc } = useResumeDraft();
+  const activeResumeFile = state?.resumeFile ?? resumeFile;
+  const activeJobDesc = state?.jobDesc ?? jobDesc;
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!state?.resumeFile || !state?.jobDesc) {
+    if (!activeResumeFile || !activeJobDesc) {
       navigate("/");
       return;
     }
@@ -37,8 +41,8 @@ const InterviewPrep = () => {
     const fetchPrep = async () => {
       try {
         const formData = new FormData();
-        formData.append("resume", state.resumeFile);
-        formData.append("jobDescription", state.jobDesc);
+        formData.append("resume", activeResumeFile);
+        formData.append("jobDescription", activeJobDesc);
         const headers = await getAuthHeaders({
           "Content-Type": "multipart/form-data",
         });
@@ -57,7 +61,7 @@ const InterviewPrep = () => {
     };
 
     fetchPrep();
-  }, [state, navigate]);
+  }, [activeJobDesc, activeResumeFile, navigate]);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fb", p: { xs: 2, md: 4 } }}>

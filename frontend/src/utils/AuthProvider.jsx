@@ -5,6 +5,9 @@ import { AuthContext } from "./AuthContext";
 import SuspendedDialog from "../component/SuspendPopup";
 import { buildApiUrl, getAuthHeaders } from "./api";
 
+const normalizeRole = (role) =>
+  role === "admin" || role === "super_admin" ? "admin" : "user";
+
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +50,7 @@ const AuthProvider = ({ children }) => {
         const dbUser = await res.json();
 
         setUser({
+          id: dbUser.id,
           uid: dbUser.firebaseUid ?? firebaseUser.uid,
           email: dbUser.email ?? firebaseUser.email ?? undefined,
           phoneNumber: dbUser.phoneNumber ?? firebaseUser.phoneNumber ?? undefined,
@@ -57,7 +61,7 @@ const AuthProvider = ({ children }) => {
             firebaseUser.phoneNumber ??
             "User",
           photoURL: firebaseUser.photoURL,
-          role: dbUser.role,
+          role: normalizeRole(dbUser.role),
           suspended: dbUser.suspended,
         });
       } catch (err) {

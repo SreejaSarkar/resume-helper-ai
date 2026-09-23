@@ -1,5 +1,15 @@
-import React from "react";
-import { Box, Card, CardContent, Typography, Button, Stack } from "@mui/material";
+import React, { useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Snackbar,
+  Stack,
+  Typography,
+} from "@mui/material";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import GoogleIcon from "@mui/icons-material/Google";
 import EmailIcon from "@mui/icons-material/Email";
@@ -11,9 +21,20 @@ import { APP_NAME, APP_SHORT_NAME } from "../../utils/brand";
 
 const Login = () => {
   const navigate = useNavigate();
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
 
   const handleGoogleLogin = async () => {
+    if (googleLoading) {
+      return;
+    }
+
     try {
+      setGoogleLoading(true);
       const result = await signInWithPopup(auth, provider);
 
       // Firebase user object
@@ -25,7 +46,25 @@ const Login = () => {
       navigate("/");
     } catch (error) {
       console.error("Google Login Error:", error);
-      alert(error.message);
+
+      if (
+        error?.code === "auth/cancelled-popup-request" ||
+        error?.code === "auth/popup-closed-by-user"
+      ) {
+        return;
+      }
+
+      setSnackbar({
+        open: true,
+        message:
+        
+          error?.code === "auth/unauthorized-domain"
+            ? "This localhost domain is not authorized in Firebase Authentication. Add localhost to Authorized domains in Firebase Console."
+            : error?.message || "Google sign-in failed. Please try again.",
+        severity: "error",
+      });
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -99,15 +138,41 @@ const Login = () => {
             <Button
               variant="contained"
               fullWidth
-              startIcon={<GoogleIcon sx={{ color: "red" }} />}
+              startIcon={googleLoading ? <CircularProgress size={18} color="inherit" /> : <GoogleIcon sx={{ color: "red" }} />}
               sx={authBtnStyle}
               onClick={handleGoogleLogin}
+              disabled={googleLoading}
             >
-              Sign in with Google
+              {googleLoading ? "Connecting to Google..." : "Sign in with Google"}
             </Button>
           </Stack>
         </CardContent>
       </Card>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={5000}
+        onClose={() =>
+          setSnackbar((prev) => ({
+            ...prev,
+            open: false,
+          }))
+        }
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() =>
+            setSnackbar((prev) => ({
+              ...prev,
+              open: false,
+            }))
+          }
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

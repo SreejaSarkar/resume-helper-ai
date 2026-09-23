@@ -9,6 +9,9 @@ import {
   Skeleton,
   IconButton,
   Tooltip,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ReplayIcon from "@mui/icons-material/Replay";
@@ -37,6 +40,13 @@ const History = () => {
   const [reportData, setReportData] = useState(null);
   const [reportType, setReportType] = useState(null);
   const [reportLoading, setReportLoading] = useState(false);
+  const [reportLoadingId, setReportLoadingId] = useState("");
+  const [deleteLoadingId, setDeleteLoadingId] = useState("");
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
 
   const fetchHistory = async () => {
@@ -57,6 +67,7 @@ const History = () => {
 
   const fetchReport = async (item) => {
     try {
+      setReportLoadingId(item.id);
       setReportType(item.type);
       setReportLoading(true);
       setReportOpen(true);
@@ -76,13 +87,20 @@ const History = () => {
       setReportData(res.data);
     } catch (err) {
       console.error("Failed to load report", err);
+      setSnackbar({
+        open: true,
+        message: "Failed to load report.",
+        severity: "error",
+      });
     } finally {
       setReportLoading(false);
+      setReportLoadingId("");
     }
   };
 
   const handleDelete = async (item) => {
     try {
+      setDeleteLoadingId(item.id);
       const headers = await getAuthHeaders();
 
       await axios.delete(
@@ -93,6 +111,13 @@ const History = () => {
       setHistory(prev => prev.filter(h => h.id !== item.id));
     } catch (err) {
       console.error('Delete failed', err);
+      setSnackbar({
+        open: true,
+        message: "Failed to delete this history item.",
+        severity: "error",
+      });
+    } finally {
+      setDeleteLoadingId("");
     }
   };
 
@@ -193,14 +218,29 @@ const History = () => {
                 )}
 
                 <Tooltip title="View Report">
-                  <IconButton>
-                    <VisibilityIcon onClick={() => fetchReport(item)} />
+                  <IconButton
+                    onClick={() => fetchReport(item)}
+                    disabled={deleteLoadingId === item.id || reportLoadingId === item.id}
+                  >
+                    {reportLoadingId === item.id ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <VisibilityIcon />
+                    )}
                   </IconButton>
                 </Tooltip>
 
                 <Tooltip title="Delete">
-                  <IconButton color="error">
-                    <DeleteIcon onClick={() => handleDelete(item)} />
+                  <IconButton
+                    color="error"
+                    onClick={() => handleDelete(item)}
+                    disabled={deleteLoadingId === item.id || reportLoadingId === item.id}
+                  >
+                    {deleteLoadingId === item.id ? (
+                      <CircularProgress size={20} color="inherit" />
+                    ) : (
+                      <DeleteIcon />
+                    )}
                   </IconButton>
                 </Tooltip>
               </Stack>
@@ -503,6 +543,20 @@ const History = () => {
       </Dialog>
 
 
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

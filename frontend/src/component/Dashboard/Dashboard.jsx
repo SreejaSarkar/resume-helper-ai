@@ -13,6 +13,7 @@ import {
   Alert,
   IconButton,
   LinearProgress,
+  CircularProgress,
 } from "@mui/material";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 import UploadFileIcon from "@mui/icons-material/UploadFile";
@@ -34,6 +35,7 @@ import {
   Rating,
 } from "@mui/material";
 import { buildApiUrl, getAuthHeaders } from "../../utils/api";
+import { useResumeDraft } from "../../utils/ResumeDraftContext";
 
 const FEEDBACK_ACTION_COUNT_KEY = "resumeAnalyzer:feedbackActionCount";
 const FEEDBACK_SNOOZE_UNTIL_KEY = "resumeAnalyzer:feedbackSnoozeUntil";
@@ -43,12 +45,17 @@ const FEEDBACK_SUBMITTED_MS = 1000 * 60 * 60 * 24 * 30;
 
 
 const Dashboard = () => {
-  const [uploadFileText, setUploadFileText] = useState(
-    "Upload your resume (.pdf)"
-  );
-  const [resumeFile, setResumeFile] = useState(null);
-  const [jobDesc, setJobDesc] = useState("");
+  const {
+    uploadFileText,
+    setUploadFileText,
+    defaultUploadText,
+    resumeFile,
+    setResumeFile,
+    jobDesc,
+    setJobDesc,
+  } = useResumeDraft();
   const [loading, setLoading] = useState(false);
+  const [activeAnalysis, setActiveAnalysis] = useState(null);
   const [aiResult, setAiResult] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
   const navigate = useNavigate();
@@ -93,7 +100,7 @@ const Dashboard = () => {
 
   const handleClearFile = () => {
     setResumeFile(null);
-    setUploadFileText("Upload your resume (.pdf)");
+    setUploadFileText(defaultUploadText);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // ⭐ critical
@@ -143,6 +150,7 @@ const Dashboard = () => {
 
     setError("");
     setLoading(true);
+    setActiveAnalysis("ai");
     setAiResult(null);
 
     try {
@@ -166,6 +174,7 @@ const Dashboard = () => {
       setError("Failed to analyze resume (AI)");
     } finally {
       setLoading(false);
+      setActiveAnalysis(null);
       setAtsResult(null)
     }
   };
@@ -178,6 +187,7 @@ const Dashboard = () => {
 
     setError("");
     setLoading(true);
+    setActiveAnalysis("ats");
     setAtsResult(null);
 
     try {
@@ -201,6 +211,7 @@ const Dashboard = () => {
       setError("Failed to calculate ATS score");
     } finally {
       setLoading(false);
+      setActiveAnalysis(null);
       setAiResult(null)
     }
   };
@@ -385,29 +396,29 @@ const Dashboard = () => {
               <Button
                 fullWidth
                 onClick={handleAIAnalysis}
-                startIcon={<InsightsIcon />}
+                startIcon={activeAnalysis === "ai" ? <CircularProgress size={18} color="inherit" /> : <InsightsIcon />}
                 variant="contained"
                 sx={{
                   ...gradientBtn,
                   height: 52,
                 }}
-                disabled={isActionDisabled}
+                disabled={isActionDisabled || loading}
               >
-                AI Match Analysis
+                {activeAnalysis === "ai" ? "Analyzing resume..." : "AI Match Analysis"}
               </Button>
 
               <Button
                 fullWidth
                 onClick={handleATSAnalysis}
-                startIcon={<RuleIcon />}
+                startIcon={activeAnalysis === "ats" ? <CircularProgress size={18} color="inherit" /> : <RuleIcon />}
                 variant="contained"
                 sx={{
                   ...gradientBtn,
                   height: 52,
                 }}
-                disabled={isActionDisabled}
+                disabled={isActionDisabled || loading}
               >
-                ATS Friendliness Check
+                {activeAnalysis === "ats" ? "Checking ATS score..." : "ATS Friendliness Check"}
               </Button>
 
               <Button
@@ -745,7 +756,14 @@ const Dashboard = () => {
             sx={gradientBtn}
             disabled={!rating || feedbackLoading}
           >
-            Submit Feedback
+            {feedbackLoading ? (
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CircularProgress size={18} color="inherit" />
+                <span>Submitting...</span>
+              </Stack>
+            ) : (
+              "Submit Feedback"
+            )}
           </Button>
         </DialogActions>
       </Dialog>

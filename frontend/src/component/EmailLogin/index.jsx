@@ -8,6 +8,7 @@ import {
   Button,
   Stack,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import VpnKeyIcon from "@mui/icons-material/VpnKey";
 import CloseIcon from "@mui/icons-material/Close";
@@ -156,6 +157,7 @@ export default function EmailLogin() {
                 variant="contained"
                 onClick={sendLink}
                 disabled={loading}
+                startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
                 sx={{
                   backgroundColor: "#fff",
                   color: "#000",
@@ -166,7 +168,7 @@ export default function EmailLogin() {
                   "&:hover": { backgroundColor: "#f5f5f5" },
                 }}
               >
-                {loading ? "Sending..." : emailSent ? "Resend Sign-In Link" : "Send Sign-In Link"}
+                {loading ? "Sending link..." : emailSent ? "Resend Sign-In Link" : "Send Sign-In Link"}
               </Button>
 
               {emailSent && (
